@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily Digest Receiver
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /root/kindle-digest/receiver.py
+WorkingDirectory=/root/kindle-digest
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target

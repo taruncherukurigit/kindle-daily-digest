@@ -1,0 +1,8 @@
+.env
+*.log
+digest.md
+digest.epub
+kindle_digest_*.epub
+digest-archive/
+__pycache__/
+*.pyc
