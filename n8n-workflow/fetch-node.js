@@ -1,23 +1,24 @@
-// n8n Code node — fetches unread articles from FreshRSS across all
-// categories, applies source-authority weighting and a per-feed volume
-// cap, sorts by (primary source first, then freshness), and marks
-// fetched articles as read so the next run doesn't re-fetch them.
+// n8n Code node. Fetches unread articles from FreshRSS across all
+// categories. Applies source-authority weighting and a per-feed volume
+// cap. Sorts by primary source first, then freshness. Marks fetched
+// articles as read so the next run doesn't re-fetch them.
 //
 // Runs after: HTTP Request (FreshRSS ClientLogin) -> Code (extract auth token)
 
 const categories = [
   "Astronomy", "Biology", "Chemistry", "Companies / Business",
-  "Computer Science", "Culture", "Earth", "Economics",
-  "Geography & Maps", "History", "Mathematics", "Philosophy",
-  "Physics", "Politics & Society", "Psychology", "Technology"
+  "Computer Science", "Culture", "Earth", "Economics", "Entertainment",
+  "Facts/ Things to Know", "Geography & Maps", "History", "Mathematics",
+  "Philosophy", "Physics", "Politics & Society", "Psychology", "Technology"
 ];
 
-// Feed origin titles containing any of these strings are treated as
-// primary/institutional sources and sorted ahead of everything else.
+// Feed origin titles containing any of these strings count as
+// primary or institutional sources. They sort ahead of everything else.
 const PRIMARY_SOURCES = [
   "nasa", "nih.gov", "cdc.gov", "federal reserve", "noaa",
   "science.org", "nature.com", "smithsonian", "bbc", "reuters",
-  "world history encyclopedia", "quanta"
+  "world history encyclopedia", "quanta", "mit news", "npr",
+  "earthsky", "mongabay", "compound interest"
 ];
 
 function sourceWeight(article) {
@@ -42,7 +43,7 @@ for (const category of categories) {
     });
     let articles = response.items || [];
 
-    // Cap per individual feed so one high-volume source can't consume
+    // Cap per individual feed so one high-volume source can't take
     // the whole category's fetch budget.
     const grouped = {};
     for (const a of articles) {
@@ -52,7 +53,7 @@ for (const category of categories) {
     }
     articles = Object.values(grouped).flat();
 
-    // Primary sources first, freshest within each tier.
+    // Primary sources first. Freshest within each tier.
     articles.sort((a, b) => {
       const w = sourceWeight(a) - sourceWeight(b);
       if (w !== 0) return w;
