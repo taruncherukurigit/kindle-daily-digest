@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>kindle-digest// pipeline status</title>
+<title>kindle-digest // controller</title>
 <meta name="description" content="A self-hosted, deterministic content pipeline. RSS to EPUB to Kindle, twice a day, zero AI calls in the run path.">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
   :root {
     --bg: #0a0d10;
+    --sidebar: #0d1114;
     --panel: #10151a;
     --panel-2: #161d24;
     --line: #232b33;
@@ -18,10 +19,11 @@
     --muted: #64707d;
     --dim: #3d4750;
     --up: #35c98c;
-    --up-dim: #1b4d3a;
+    --up-dim: #16332a;
     --warn: #e8a33d;
     --down: #e5555a;
     --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+    --sidebar-w: 216px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,20 +33,17 @@
     background: var(--bg);
     color: var(--text);
     font-family: var(--mono);
-    font-size: 14px;
-    line-height: 1.7;
+    font-size: 13.5px;
+    line-height: 1.65;
   }
 
   a { color: var(--up); text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  .wrap { max-width: 900px; margin: 0 auto; padding: 0 20px; }
-
-  /* status light */
   .led {
     display: inline-block;
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     margin-right: 6px;
     flex-shrink: 0;
@@ -52,155 +51,151 @@
   .led.up { background: var(--up); box-shadow: 0 0 6px var(--up); }
   .led.warn { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
 
-  /* prompt line */
-  .prompt {
-    color: var(--muted);
-    font-size: 12.5px;
+  /* Layout shell */
+  .shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    min-height: 100vh;
   }
-  .prompt .user { color: var(--up); }
-  .prompt .host { color: var(--text); }
-  .prompt .path { color: var(--warn); }
 
-  /* Terminal window chrome */
-  .term {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.6);
-  }
-  .term-bar {
+  /* Sidebar */
+  .sidebar {
+    background: var(--sidebar);
+    border-right: 1px solid var(--line);
+    padding: 20px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: var(--panel-2);
-    border-bottom: 1px solid var(--line);
-  }
-  .term-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .term-dot.r { background: #4a3232; }
-  .term-dot.y { background: #4a4432; }
-  .term-dot.g { background: #324a3a; }
-  .term-title {
-    margin-left: 8px;
-    font-size: 11.5px;
-    color: var(--muted);
-  }
-  .term-body { padding: 24px 22px 28px; }
-
-  /* Hero */
-  .hero { padding: 70px 0 40px; }
-
-  .type-line {
-    white-space: pre-wrap;
-    font-size: 14px;
-  }
-  .type-line .out { color: var(--muted); }
-  .type-line .hl { color: var(--up); font-weight: 600; }
-
-  h1.big {
-    font-size: clamp(22px, 3.6vw, 32px);
-    font-weight: 700;
-    color: var(--text);
-    margin: 18px 0 10px;
-    line-height: 1.35;
+    flex-direction: column;
   }
 
-  .hero p.sub {
-    color: var(--muted);
-    max-width: 640px;
-    font-size: 13.5px;
-  }
-
-  .cursor {
-    display: inline-block;
-    width: 8px;
-    height: 16px;
-    background: var(--up);
-    vertical-align: middle;
-    animation: blink 1s steps(1) infinite;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
-
-  /* section shell */
-  section { padding: 56px 0; border-top: 1px solid var(--line); }
-
-  .cmd-header {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 18px;
-  }
-  .cmd-header .sym { color: var(--up); }
-
-  section h2 {
-    font-size: 20px;
+  .brand {
+    font-size: 12.5px;
     color: var(--text);
     margin-bottom: 4px;
+    font-weight: 600;
   }
+  .brand .dim { color: var(--muted); font-weight: 400; }
 
-  section p.desc {
+  .brand-sub {
+    font-size: 10.5px;
     color: var(--muted);
-    max-width: 620px;
-    font-size: 13px;
     margin-bottom: 26px;
   }
 
-  /* interface table (categories) */
-  table.ifc {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12.5px;
+  nav.sidenav { display: flex; flex-direction: column; gap: 2px; }
+  nav.sidenav a {
+    color: var(--muted);
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
+  nav.sidenav a:hover { background: var(--panel); color: var(--text); text-decoration: none; }
+  nav.sidenav .tick { color: var(--dim); }
+
+  .sidebar-foot {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+  .sidebar-foot .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .sidebar-foot .row span:last-child { color: var(--up); }
+
+  /* Main */
+  main { padding: 28px 36px 60px; max-width: 1400px; }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .topbar h1 {
+    font-size: 17px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .topbar .path { color: var(--muted); font-size: 12px; }
+  .topbar .path .seg { color: var(--warn); }
+
+  /* Stat strip */
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-bottom: 22px;
+  }
+  .stat-box { background: var(--panel); padding: 16px 18px; }
+  .stat-box .n { font-size: 22px; font-weight: 700; color: var(--up); }
+  .stat-box .l { font-size: 10.5px; color: var(--muted); margin-top: 4px; text-transform: lowercase; }
+
+  /* Panel */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    margin-bottom: 20px;
+    scroll-margin-top: 20px;
+  }
+  .panel-head {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-head h2 { font-size: 13px; color: var(--text); font-weight: 600; }
+  .panel-head .cmd { font-size: 11px; color: var(--dim); }
+  .panel-body { padding: 18px; }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  /* interface table */
+  table.ifc { width: 100%; border-collapse: collapse; font-size: 12px; }
   table.ifc th {
     text-align: left;
     color: var(--muted);
     font-weight: 500;
-    padding: 8px 10px;
+    padding: 6px 8px;
     border-bottom: 1px solid var(--line-bright);
     text-transform: lowercase;
   }
-  table.ifc td {
-    padding: 7px 10px;
-    border-bottom: 1px solid var(--line);
-    color: var(--text);
-  }
-  table.ifc tr:hover td { background: var(--panel); }
+  table.ifc td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.ifc tr:hover td { background: var(--panel-2); }
   .status-up { color: var(--up); }
   .status-new { color: var(--warn); }
-  .iname { color: var(--text); }
 
-  /* topology diagram */
-  .topo {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 30px 16px;
-    overflow-x: auto;
-  }
-  .topo svg { display: block; margin: 0 auto; min-width: 620px; }
-  .t-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    fill: var(--text);
-  }
-  .t-sub {
-    font-family: var(--mono);
-    font-size: 9px;
-    fill: var(--muted);
-  }
+  /* topology */
+  .topo svg { display: block; width: 100%; height: auto; max-height: 340px; }
+  .t-label { font-family: var(--mono); font-size: 11px; fill: var(--text); }
+  .t-sub { font-family: var(--mono); font-size: 9px; fill: var(--muted); }
   .t-line { stroke: var(--line-bright); stroke-width: 1.5; fill: none; }
   .t-pkt { fill: var(--up); filter: drop-shadow(0 0 5px var(--up)); }
   .t-node { fill: var(--panel-2); stroke: var(--line-bright); stroke-width: 1.2; }
   .t-node-router { fill: var(--panel-2); stroke: var(--up); stroke-width: 1.2; }
 
-  /* traceroute steps */
+  /* traceroute */
   .trace-row {
     display: grid;
-    grid-template-columns: 28px 130px 1fr;
-    gap: 14px;
-    padding: 12px 0;
+    grid-template-columns: 24px 116px 1fr;
+    gap: 12px;
+    padding: 10px 0;
     border-bottom: 1px dashed var(--line);
-    font-size: 12.5px;
+    font-size: 12px;
     align-items: baseline;
   }
   .trace-row:last-child { border-bottom: none; }
@@ -209,237 +204,238 @@
   .trace-desc { color: var(--muted); }
   .trace-desc b { color: var(--text); font-weight: 600; }
 
-  /* log / decisions */
+  /* log */
   .log-block {
-    background: var(--panel);
-    border: 1px solid var(--line);
     border-left: 2px solid var(--up-dim);
-    border-radius: 4px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    font-size: 12.5px;
+    padding: 4px 0 4px 14px;
+    margin-bottom: 16px;
   }
-  .log-block .tag {
-    color: var(--warn);
-    font-size: 11px;
-    margin-bottom: 6px;
-  }
-  .log-block p { color: var(--muted); line-height: 1.65; }
-  .log-block p b { color: var(--text); }
+  .log-block:last-child { margin-bottom: 0; }
+  .log-block .tag { color: var(--warn); font-size: 10.5px; margin-bottom: 5px; }
+  .log-block p { color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .log-block p b { color: var(--text); font-weight: 600; }
 
-  /* stack inventory */
+  /* inventory */
   .inv-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 1px;
     background: var(--line);
     border: 1px solid var(--line);
-    font-size: 12px;
+    font-size: 11.5px;
   }
-  .inv-item {
-    background: var(--panel);
-    padding: 12px 14px;
-    display: flex;
-    justify-content: space-between;
-  }
+  .inv-item { background: var(--panel-2); padding: 11px 13px; display: flex; justify-content: space-between; }
   .inv-item span:first-child { color: var(--text); }
   .inv-item span:last-child { color: var(--muted); }
 
   footer {
-    padding: 40px 0 60px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
     color: var(--muted);
-    font-size: 12px;
+    font-size: 11.5px;
   }
-  footer .prompt { margin-bottom: 6px; }
 
-  @media (max-width: 600px) {
-    .trace-row { grid-template-columns: 24px 1fr; }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 20px 18px 50px; }
+    .stat-strip { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .inv-grid { grid-template-columns: repeat(2, 1fr); }
+    .trace-row { grid-template-columns: 20px 1fr; }
     .trace-host { grid-column: 2; }
     .trace-desc { grid-column: 2; }
-    table.ifc { font-size: 11px; }
   }
 </style>
 </head>
 <body>
 
-<main>
-  <div class="wrap hero">
-    <div class="term">
-      <div class="term-bar">
-        <div class="term-dot r"></div>
-        <div class="term-dot y"></div>
-        <div class="term-dot g"></div>
-        <div class="term-title">tarun@kindle-digest: ~</div>
-      </div>
-      <div class="term-body">
-        <div class="prompt"><span class="user">tarun</span>@<span class="host">kindle-digest</span>:<span class="path">~</span>$ show digest-pipeline summary</div>
-        <h1 class="big">18 RSS categories in, one EPUB out, every 12 hours.<span class="cursor"></span></h1>
-        <p class="sub">Two self-hosted containers, no AI calls in the run path. Fetch and rank and dedupe happen on fixed rules, the same way a routing table picks a next hop on fixed metrics, not on a guess.</p>
-      </div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">kindle<span class="dim">-digest</span></div>
+    <div class="brand-sub">controller v1</div>
+    <nav class="sidenav">
+      <a href="#overview"><span class="tick">$</span> overview</a>
+      <a href="#interfaces"><span class="tick">$</span> interfaces</a>
+      <a href="#topology"><span class="tick">$</span> topology</a>
+      <a href="#trace"><span class="tick">$</span> trace</a>
+      <a href="#decisions"><span class="tick">$</span> decisions</a>
+      <a href="#inventory"><span class="tick">$</span> inventory</a>
+      <a href="https://github.com/taruncherukurigit/kindle-daily-digest"><span class="tick">$</span> source</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="row"><span>uptime</span><span>ok</span></div>
+      <div class="row"><span>last run</span><span>ok</span></div>
+      <div class="row"><span>next run</span><span>6:00 pm</span></div>
     </div>
-  </div>
+  </aside>
 
-  <section id="interfaces">
-    <div class="wrap">
-      <div class="cmd-header"><span class="sym">$</span> show ip interface brief | category-feed</div>
-      <h2>Category status</h2>
-      <p class="desc">Every category is a live interface into a slice of the internet. Two came up new in the last change window.</p>
-      <table class="ifc">
-        <tr><th>category</th><th>status</th><th>sources</th></tr>
-        <tr><td class="iname">Physics</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Biology</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Chemistry</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Earth</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Astronomy</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Mathematics</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Computer Science</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Economics</td><td class="status-up">up/up</td><td>3</td></tr>
-        <tr><td class="iname">History</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Psychology</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Philosophy</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Politics &amp; Society</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Culture</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Technology</td><td class="status-up">up/up</td><td>4</td></tr>
-        <tr><td class="iname">Companies &amp; Business</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Geography &amp; Maps</td><td class="status-up">up/up</td><td>2</td></tr>
-        <tr><td class="iname">Entertainment</td><td class="status-new">up/up*</td><td>4</td></tr>
-        <tr><td class="iname">Facts &amp; Things to Know</td><td class="status-new">up/up*</td><td>4</td></tr>
-      </table>
-      <p style="color:var(--muted); font-size:11px; margin-top:12px;">* brought up in the latest config change</p>
+  <main>
+    <div class="topbar" id="overview">
+      <h1><span class="led up"></span>18 categories in, one epub out, every 12 hours</h1>
+      <div class="path">tarun<span class="seg">@</span>kindle-digest<span class="seg">:~$</span> show digest-pipeline summary</div>
     </div>
-  </section>
 
-  <section id="topology">
-    <div class="wrap">
-      <div class="cmd-header"><span class="sym">$</span> show topology</div>
-      <h2>Two nodes, one link</h2>
-      <p class="desc">FreshRSS and n8n live on one LXC container. A small Flask receiver lives on another. The only traffic that leaves the home network is the finished epub, mailed out.</p>
-      <div class="topo">
-        <svg viewBox="0 0 620 260" width="620" height="260">
-          <path class="t-line" d="M 90 90 L 90 130 L 200 130 L 200 90"></path>
-          <path class="t-line" d="M 200 130 L 260 130 L 260 90"></path>
-          <path class="t-line" d="M 300 110 L 400 110"></path>
-          <path class="t-line" d="M 480 90 L 480 130 L 560 130 L 560 90"></path>
-          <path class="t-line" d="M 480 200 L 480 160"></path>
+    <div class="stat-strip">
+      <div class="stat-box"><div class="n">18</div><div class="l">categories</div></div>
+      <div class="stat-box"><div class="n">2x</div><div class="l">daily runs</div></div>
+      <div class="stat-box"><div class="n">$0</div><div class="l">monthly cost</div></div>
+      <div class="stat-box"><div class="n">0</div><div class="l">llm calls</div></div>
+    </div>
 
-          <circle class="t-node-router" cx="90" cy="70" r="20"></circle>
-          <text x="90" y="74" text-anchor="middle" class="t-label" font-size="9">RSS</text>
-          <text x="90" y="112" text-anchor="middle" class="t-sub">FreshRSS</text>
+    <div class="panel" id="topology">
+      <div class="panel-head"><h2>topology</h2><div class="cmd">show topology</div></div>
+      <div class="panel-body topo">
+        <svg viewBox="0 0 1100 220" width="1100" height="220" preserveAspectRatio="xMidYMid meet">
+          <path class="t-line" d="M 140 90 L 140 130 L 320 130 L 320 90"></path>
+          <path class="t-line" d="M 320 130 L 430 130 L 430 90"></path>
+          <path class="t-line" d="M 500 110 L 680 110"></path>
+          <path class="t-line" d="M 820 90 L 820 130 L 960 130 L 960 90"></path>
+          <path class="t-line" d="M 820 200 L 820 160"></path>
+          <path class="t-line" d="M 900 90 L 1060 90"></path>
 
-          <circle class="t-node-router" cx="260" cy="70" r="20"></circle>
-          <text x="260" y="74" text-anchor="middle" class="t-label" font-size="9">n8n</text>
-          <text x="260" y="112" text-anchor="middle" class="t-sub">6am / 6pm</text>
+          <circle class="t-node-router" cx="140" cy="70" r="22"></circle>
+          <text x="140" y="75" text-anchor="middle" class="t-label" font-size="10">RSS</text>
+          <text x="140" y="112" text-anchor="middle" class="t-sub">FreshRSS, 18 categories</text>
 
-          <rect class="t-node" x="440" y="70" width="80" height="40" rx="5"></rect>
-          <text x="480" y="94" text-anchor="middle" class="t-label">receiver</text>
+          <circle class="t-node-router" cx="430" cy="70" r="22"></circle>
+          <text x="430" y="75" text-anchor="middle" class="t-label" font-size="10">n8n</text>
+          <text x="430" y="112" text-anchor="middle" class="t-sub">6am / 6pm schedule</text>
 
-          <rect class="t-node" x="440" y="200" width="80" height="34" rx="5"></rect>
-          <text x="480" y="221" text-anchor="middle" class="t-label" font-size="9">pandoc</text>
-          <path class="t-line" d="M 520 90 L 620 90"></path>
-          <text x="590" y="80" text-anchor="middle" class="t-sub">kindle</text>
-          <circle class="t-node" cx="600" cy="90" r="4" fill="var(--muted)"></circle>
+          <rect class="t-node" x="760" y="70" width="120" height="40" rx="5"></rect>
+          <text x="820" y="94" text-anchor="middle" class="t-label">receiver</text>
 
-          <text x="90" y="30" text-anchor="middle" class="t-sub">knowledge-feed lxc</text>
-          <text x="480" y="30" text-anchor="middle" class="t-sub">kindle-digest lxc</text>
+          <rect class="t-node" x="760" y="200" width="120" height="34" rx="5"></rect>
+          <text x="820" y="221" text-anchor="middle" class="t-label" font-size="9">pandoc, archive</text>
+
+          <text x="1010" y="94" text-anchor="middle" class="t-sub">kindle inbox</text>
+          <circle class="t-node" cx="1060" cy="90" r="4" fill="#3d4750"></circle>
+
+          <text x="140" y="28" text-anchor="middle" class="t-sub">knowledge-feed lxc</text>
+          <text x="820" y="28" text-anchor="middle" class="t-sub">kindle-digest lxc</text>
 
           <circle class="t-pkt" r="3">
-            <animateMotion dur="2.6s" repeatCount="indefinite" path="M 90 90 L 90 130 L 260 130 L 260 90"></animateMotion>
+            <animateMotion dur="2.6s" repeatCount="indefinite" path="M 140 90 L 140 130 L 430 130 L 430 90"></animateMotion>
           </circle>
           <circle class="t-pkt" r="3">
-            <animateMotion dur="1.6s" repeatCount="indefinite" path="M 300 110 L 400 110"></animateMotion>
+            <animateMotion dur="1.6s" repeatCount="indefinite" path="M 500 110 L 680 110"></animateMotion>
           </circle>
           <circle class="t-pkt" r="3">
-            <animateMotion dur="1.4s" repeatCount="indefinite" path="M 480 110 L 480 200"></animateMotion>
+            <animateMotion dur="1.4s" repeatCount="indefinite" path="M 820 110 L 820 200"></animateMotion>
           </circle>
         </svg>
       </div>
     </div>
-  </section>
 
-  <section id="trace">
-    <div class="wrap">
-      <div class="cmd-header"><span class="sym">$</span> traceroute digest.pipeline</div>
-      <h2>One run, hop by hop</h2>
-      <div class="trace-row">
-        <div class="trace-hop">1</div>
-        <div class="trace-host">schedule-trigger</div>
-        <div class="trace-desc">Fires twice a day, <b>6am and 6pm</b>. Nothing runs outside these two windows.</div>
+    <div class="grid-2">
+      <div class="panel" id="interfaces">
+        <div class="panel-head"><h2>interfaces</h2><div class="cmd">show ip int brief</div></div>
+        <div class="panel-body">
+          <table class="ifc">
+            <tr><th>category</th><th>status</th><th>src</th></tr>
+            <tr><td>Physics</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Biology</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Chemistry</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Earth</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Astronomy</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Mathematics</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Computer Science</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Economics</td><td class="status-up">up/up</td><td>3</td></tr>
+            <tr><td>History</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Psychology</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Philosophy</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Politics &amp; Society</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Culture</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Technology</td><td class="status-up">up/up</td><td>4</td></tr>
+            <tr><td>Companies &amp; Business</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Geography &amp; Maps</td><td class="status-up">up/up</td><td>2</td></tr>
+            <tr><td>Entertainment</td><td class="status-new">up/up*</td><td>4</td></tr>
+            <tr><td>Facts &amp; Things to Know</td><td class="status-new">up/up*</td><td>4</td></tr>
+          </table>
+          <p style="color:var(--muted); font-size:10.5px; margin-top:10px;">* brought up in the latest config change</p>
+        </div>
       </div>
-      <div class="trace-row">
-        <div class="trace-hop">2</div>
-        <div class="trace-host">freshrss-auth</div>
-        <div class="trace-desc">n8n logs into FreshRSS's Reader API, pulls unread items across all <b>18 categories</b>, caps any one feed at 30, marks everything fetched as read.</div>
-      </div>
-      <div class="trace-row">
-        <div class="trace-hop">3</div>
-        <div class="trace-host">source-rank</div>
-        <div class="trace-desc">A fixed list of primary sources sorts first. Everything else sorts by freshness. <b>No model in the loop.</b></div>
-      </div>
-      <div class="trace-row">
-        <div class="trace-hop">4</div>
-        <div class="trace-host">assemble</div>
-        <div class="trace-desc">Near-duplicate titles collapse into one. Full text pulled through the receiver. Each article gets an <b>anchor id</b> and a spot in the Quick Skim index.</div>
-      </div>
-      <div class="trace-row">
-        <div class="trace-hop">5</div>
-        <div class="trace-host">kindle.amazon.com</div>
-        <div class="trace-desc">pandoc renders the epub, a dated copy gets archived and it lands in your <b>Send-to-Kindle</b> inbox.</div>
+
+      <div class="panel" id="trace">
+        <div class="panel-head"><h2>trace</h2><div class="cmd">traceroute digest.pipeline</div></div>
+        <div class="panel-body">
+          <div class="trace-row">
+            <div class="trace-hop">1</div>
+            <div class="trace-host">schedule</div>
+            <div class="trace-desc">Fires <b>6am and 6pm</b>. Nothing runs outside these windows.</div>
+          </div>
+          <div class="trace-row">
+            <div class="trace-hop">2</div>
+            <div class="trace-host">freshrss-auth</div>
+            <div class="trace-desc">Pulls unread items across all <b>18 categories</b>, caps any feed at 30, marks fetched as read.</div>
+          </div>
+          <div class="trace-row">
+            <div class="trace-hop">3</div>
+            <div class="trace-host">source-rank</div>
+            <div class="trace-desc">Primary sources sort first, rest by freshness. <b>No model in the loop.</b></div>
+          </div>
+          <div class="trace-row">
+            <div class="trace-hop">4</div>
+            <div class="trace-host">assemble</div>
+            <div class="trace-desc">Dedup titles, pull full text, tag each article with an <b>anchor id</b>.</div>
+          </div>
+          <div class="trace-row">
+            <div class="trace-hop">5</div>
+            <div class="trace-host">kindle.amazon.com</div>
+            <div class="trace-desc">Renders the epub, archives it, delivers to <b>Send-to-Kindle</b>.</div>
+          </div>
+        </div>
       </div>
     </div>
-  </section>
 
-  <section id="decisions">
-    <div class="wrap">
-      <div class="cmd-header"><span class="sym">$</span> cat /var/log/design-decisions.log</div>
-      <h2>Why it works this way</h2>
-
-      <div class="log-block">
-        <div class="tag">[reliability]</div>
-        <p><b>No AI calls anywhere in the run path.</b> An earlier version used Claude Code for search and synthesis, and a single run could burn through a usage window and fail silently. This version replaced every judgment call with a fixed rule: source weighting, per-feed caps, cross-category dedup, freshness sort. Nothing here can fail from a usage cap, because nothing here calls a model.</p>
+    <div class="grid-2">
+      <div class="panel" id="decisions">
+        <div class="panel-head"><h2>decisions</h2><div class="cmd">cat design-decisions.log</div></div>
+        <div class="panel-body">
+          <div class="log-block">
+            <div class="tag">[reliability]</div>
+            <p><b>No AI calls anywhere in the run path.</b> An earlier version used Claude Code for search and synthesis, and a single run could burn through a usage window and fail silently. This one runs on fixed rules only: source weighting, per-feed caps, cross-category dedup, freshness sort.</p>
+          </div>
+          <div class="log-block">
+            <div class="tag">[capacity]</div>
+            <p><b>Per-feed cap, not per-category.</b> One high-volume feed could eat an entire category's budget by itself during testing. Capping the feed keeps any single source from crowding out the rest, the same reason you would not let one interface saturate a shared uplink.</p>
+          </div>
+          <div class="log-block">
+            <div class="tag">[navigation]</div>
+            <p><b>Quick Skim links jump inside the epub.</b> An e-ink Kindle often has no working browser. Every article carries its own anchor id, so the index jumps straight to the full text already sitting in the file.</p>
+          </div>
+          <div class="log-block">
+            <div class="tag">[scope]</div>
+            <p><b>No images.</b> RSS enclosure tags only covered a fraction of articles, and text extraction never returns images at all. A feature that half-works was worse than no feature.</p>
+          </div>
+        </div>
       </div>
 
-      <div class="log-block">
-        <div class="tag">[capacity]</div>
-        <p><b>Per-feed cap, not per-category.</b> One high-volume feed with hundreds of unread items could eat an entire category's budget by itself during testing. Capping the feed instead of the category keeps any single source from crowding out the rest, the same reason you would not let one interface saturate a shared uplink.</p>
-      </div>
-
-      <div class="log-block">
-        <div class="tag">[navigation]</div>
-        <p><b>Quick Skim links jump inside the epub.</b> An e-ink Kindle often has no working browser at all. Every article is a real heading with its own anchor id, so the index jumps straight to the full text already sitting in the file. A small second link still points out to the source for anyone reading on something with a browser.</p>
-      </div>
-
-      <div class="log-block">
-        <div class="tag">[scope]</div>
-        <p><b>No images.</b> RSS enclosure tags only covered a fraction of articles, and the text-extraction endpoint never returns images at all. Shipping a feature that worked for some entries and silently failed for the rest was worse than not shipping it.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="inventory">
-    <div class="wrap">
-      <div class="cmd-header"><span class="sym">$</span> show inventory</div>
-      <h2>Stack</h2>
-      <div class="inv-grid">
-        <div class="inv-item"><span>FreshRSS</span><span>rss reader</span></div>
-        <div class="inv-item"><span>n8n</span><span>orchestration</span></div>
-        <div class="inv-item"><span>Flask</span><span>receiver</span></div>
-        <div class="inv-item"><span>trafilatura</span><span>extraction</span></div>
-        <div class="inv-item"><span>pandoc</span><span>epub render</span></div>
-        <div class="inv-item"><span>Proxmox VE</span><span>lxc host</span></div>
-        <div class="inv-item"><span>systemd</span><span>process mgmt</span></div>
-        <div class="inv-item"><span>ntfy</span><span>alerting</span></div>
+      <div class="panel" id="inventory">
+        <div class="panel-head"><h2>inventory</h2><div class="cmd">show inventory</div></div>
+        <div class="panel-body">
+          <div class="inv-grid">
+            <div class="inv-item"><span>FreshRSS</span><span>reader</span></div>
+            <div class="inv-item"><span>n8n</span><span>orch</span></div>
+            <div class="inv-item"><span>Flask</span><span>receiver</span></div>
+            <div class="inv-item"><span>trafilatura</span><span>extract</span></div>
+            <div class="inv-item"><span>pandoc</span><span>render</span></div>
+            <div class="inv-item"><span>Proxmox</span><span>lxc host</span></div>
+            <div class="inv-item"><span>systemd</span><span>process</span></div>
+            <div class="inv-item"><span>ntfy</span><span>alerts</span></div>
+          </div>
+          <p style="color:var(--muted); font-size:11.5px; margin-top:16px; line-height:1.7;">Two LXC containers on a home Proxmox VE server, running on a ThinkPad T14. Zero monthly cost, both set to survive a reboot.</p>
+        </div>
       </div>
     </div>
-  </section>
 
-  <footer>
-    <div class="wrap">
-      <div class="prompt"><span class="user">tarun</span>@<span class="host">kindle-digest</span>:<span class="path">~</span>$ cat README.md | head -1</div>
-      <p>Built and run as a homelab project on a Proxmox VE server. Full source and setup in the repository.</p>
-      <p style="margin-top:10px;"><a href="https://github.com/taruncherukurigit/kindle-daily-digest">github.com/taruncherukurigit/kindle-daily-digest</a></p>
-    </div>
-  </footer>
-</main>
+    <footer>
+      tarun@kindle-digest:~$ cat README.md | head -1<br>
+      Built and run as a homelab project. Full source in the repository above.
+    </footer>
+  </main>
+</div>
 
 </body>
 </html>
